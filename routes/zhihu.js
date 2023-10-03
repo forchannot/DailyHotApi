@@ -3,6 +3,12 @@ const zhihuRouter = new Router();
 const axios = require("axios");
 const { get, set, del } = require("../utils/cacheData");
 
+// 接口信息
+const routerInfo = {
+  title: "知乎",
+  subtitle: "热榜",
+};
+
 // 缓存键名
 const cacheKey = "zhihuData";
 
@@ -21,8 +27,7 @@ const getData = (data) => {
   if (!data) return [];
   const dataList = [];
   try {
-    const pattern =
-      /<script id="js-initialData" type="text\/json">(.*?)<\/script>/;
+    const pattern = /<script id="js-initialData" type="text\/json">(.*?)<\/script>/;
     const matchResult = data.match(pattern);
     const jsonObject = JSON.parse(matchResult[1]).initialState.topstory.hotList;
     jsonObject.forEach((v) => {
@@ -59,6 +64,7 @@ zhihuRouter.get("/zhihu", async (ctx) => {
       if (!data) {
         ctx.body = {
           code: 500,
+          ...routerInfo,
           message: "获取失败",
         };
         return false;
@@ -69,8 +75,7 @@ zhihuRouter.get("/zhihu", async (ctx) => {
     ctx.body = {
       code: 200,
       message: "获取成功",
-      title: "知乎",
-      subtitle: "热榜",
+      ...routerInfo,
       from,
       total: data.length,
       updateTime,
@@ -80,8 +85,7 @@ zhihuRouter.get("/zhihu", async (ctx) => {
     console.error(error);
     ctx.body = {
       code: 500,
-      title: "知乎",
-      subtitle: "热榜",
+      ...routerInfo,
       message: "获取失败",
     };
   }
@@ -101,8 +105,7 @@ zhihuRouter.get("/zhihu/new", async (ctx) => {
     ctx.body = {
       code: 200,
       message: "获取成功",
-      title: "知乎",
-      subtitle: "热榜",
+      ...routerInfo,
       total: newData.length,
       updateTime,
       data: newData,
@@ -120,8 +123,7 @@ zhihuRouter.get("/zhihu/new", async (ctx) => {
       ctx.body = {
         code: 200,
         message: "获取成功",
-        title: "知乎",
-        subtitle: "热榜",
+        ...routerInfo,
         total: cachedData.length,
         updateTime,
         data: cachedData,
@@ -130,12 +132,12 @@ zhihuRouter.get("/zhihu/new", async (ctx) => {
       // 如果缓存中也没有数据，则返回错误信息
       ctx.body = {
         code: 500,
-        title: "知乎",
-        subtitle: "热榜",
+        ...routerInfo,
         message: "获取失败",
       };
     }
   }
 });
 
+zhihuRouter.info = routerInfo;
 module.exports = zhihuRouter;
