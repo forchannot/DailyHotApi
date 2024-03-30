@@ -1,33 +1,34 @@
+/*
+ * @author: x-dr
+ * @date: 2023-12-25
+ * @customEditors: imsyy
+ * @lastEditTime: 2023-12-27
+ */
+
 const Router = require("koa-router");
-const itHomeRouter = new Router();
+const githubNewRouter = new Router();
 const axios = require("axios");
 const cheerio = require("cheerio");
 const { get, set, del } = require("../utils/cacheData");
 
 // 接口信息
 const routerInfo = {
-  name: "ithome",
-  title: "IT之家",
-  subtitle: "热榜",
+  name: "github",
+  title: "Github",
+  subtitle: "trending",
 };
 
 // 缓存键名
-const cacheKey = "itHomeData";
+const cacheKey = "githubData";
 
 // 调用时间
 let updateTime = new Date().toISOString();
 
-// 调用路径
-const url = "https://m.ithome.com/rankm/";
+const url = "https://github.com/trending";
+
 const headers = {
   "User-Agent":
     "Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.0 Mobile/15E148 Safari/604.1",
-};
-
-// it之家特殊处理 - url
-const replaceLink = (url) => {
-  const match = url.match(/[html|live]\/(\d+)\.htm/)[1];
-  return `https://www.ithome.com/0/${match.slice(0, 3)}/${match.slice(3)}.htm`;
 };
 
 // 数据处理
@@ -36,29 +37,37 @@ const getData = (data) => {
   const dataList = [];
   const $ = cheerio.load(data);
   try {
-    $(".rank-name").each(() => {
-      const type = $(this).data("rank-type");
-      const newListHtml = $(this).next(".rank-box").html();
-      cheerio
-        .load(newListHtml)(".placeholder")
-        .get()
-        .map((v) => {
-          dataList.push({
-            title: $(v).find(".plc-title").text(),
-            img: $(v).find("img").attr("data-original"),
-            time: $(v).find(".post-time").text(),
-            type: $(this).text(),
-            typeName: type,
-            hot: Number($(v).find(".review-num").text().replace(/\D/g, "")),
-            url: replaceLink($(v).find("a").attr("href")),
-            mobileUrl: $(v).find("a").attr("href"),
-          });
-        });
-      // dataList[type] = {
-      //   name: $(this).text(),
-      //   total: newsList.length,
-      //   list: newsList,
-      // };
+    $(`.Box-row`).each((i, e) => {
+      // console.log(getCheerio(e).html());
+      const item = cheerio.load($(e).html());
+      // console.log(item);
+      const title = item("h2 a").attr("href").replace("/", "");
+      const url = `https://github.com/${title}`;
+      const excerpt = item("p")
+        .text()
+        .replace(/(^\s*)|(\s*$)/g, "");
+      const language = item('.f6 span[itemprop="programmingLanguage"]')
+        .text()
+        .replace(/(^\s*)|(\s*$)/g, "");
+      const stars = item(".f6 a:first")
+        .text()
+        .replace(/(^\s*)|(\s*$)/g, "");
+      const forks = item(".f6 a:eq(1)")
+        .text()
+        .replace(/(^\s*)|(\s*$)/g, "");
+      const starstoday = item(".f6 span:eq(4)")
+        .text()
+        .replace(/(^\s*)|(\s*$)/g, "");
+
+      dataList.push({
+        title: title,
+        desc: excerpt,
+        url: url,
+        language: language,
+        stars: stars,
+        forks: forks,
+        starstoday: starstoday,
+      });
     });
     return dataList;
   } catch (error) {
@@ -67,19 +76,21 @@ const getData = (data) => {
   }
 };
 
-// IT之家热榜
-itHomeRouter.get("/ithome", async (ctx) => {
-  console.log("获取IT之家热榜");
+// trending
+githubNewRouter.get("/github", async (ctx) => {
+  console.log("获取github trending");
   try {
     // 从缓存中获取数据
     let data = await get(cacheKey);
     const from = data ? "cache" : "server";
     if (!data) {
       // 如果缓存中不存在数据
-      console.log("从服务端重新获取IT之家热榜");
+      console.log("从服务端重新github trending");
       // 从服务器拉取数据
       const response = await axios.get(url, { headers });
+      // console.log(response.data);
       data = getData(response.data);
+
       updateTime = new Date().toISOString();
       if (!data) {
         ctx.body = {
@@ -111,15 +122,15 @@ itHomeRouter.get("/ithome", async (ctx) => {
   }
 });
 
-// IT之家热榜 - 获取最新数据
-itHomeRouter.get("/ithome/new", async (ctx) => {
-  console.log("获取IT之家热榜 - 最新数据");
+// trending - 获取最新数据
+githubNewRouter.get("/github/new", async (ctx) => {
+  console.log("获取github trending  - 最新数据");
   try {
     // 从服务器拉取最新数据
     const response = await axios.get(url, { headers });
     const newData = getData(response.data);
     updateTime = new Date().toISOString();
-    console.log("从服务端重新获取IT之家热榜");
+    console.log("从服务端重新github trending");
 
     // 返回最新数据
     ctx.body = {
@@ -159,5 +170,5 @@ itHomeRouter.get("/ithome/new", async (ctx) => {
   }
 });
 
-itHomeRouter.info = routerInfo;
-module.exports = itHomeRouter;
+githubNewRouter.info = routerInfo;
+module.exports = githubNewRouter;
